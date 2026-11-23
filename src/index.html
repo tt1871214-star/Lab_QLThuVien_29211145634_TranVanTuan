@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Thư viện - Hệ thống Hỗ trợ AI</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20width=%22100%22%20height=%22100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">📚</div>
+        <div class="brand-info">
+          <h1>Hệ thống Quản lý Thư viện</h1>
+          <p class="brand-sub">Ứng dụng Hỗ trợ AI • Sinh viên: <strong>Trần Văn Tuấn</strong> (MSSV: <strong>29211145634</strong>)</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Bộ chọn ngày hệ thống giả lập để tiện kiểm thử hạn trả & quá hạn -->
+        <div class="simulation-box" title="Thay đổi ngày hệ thống để kiểm thử kịch bản quá hạn">
+          <label for="system-date-input">📅 Ngày hệ thống:</label>
+          <input type="date" id="system-date-input" class="form-control-sm">
+        </div>
+        <button id="btn-reset-data" class="btn btn-outline-danger btn-sm" title="Khôi phục về dữ liệu hạt giống ban đầu">
+          🔄 Đặt lại mẫu
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <div class="nav-container">
+        <button class="nav-tab active" data-tab="tab-overview">
+          <span class="tab-icon">📊</span> Tổng quan
+        </button>
+        <button class="nav-tab" data-tab="tab-books">
+          <span class="tab-icon">📖</span> Kho sách & Bản sao
+        </button>
+        <button class="nav-tab" data-tab="tab-readers">
+          <span class="tab-icon">👥</span> Độc giả
+        </button>
+        <button class="nav-tab" data-tab="tab-borrows">
+          <span class="tab-icon">🔖</span> Mượn & Trả sách
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- ================= 1. TAB TỔNG QUAN ================= -->
+      <section id="tab-overview" class="tab-content active">
+        <div class="section-header">
+          <div>
+            <h2>Bảng điều khiển Tổng quan</h2>
+            <p class="section-desc">Thống kê dữ liệu thực tế và cảnh báo các phiếu mượn cần thu hồi</p>
+          </div>
+          <div class="badge-status-note">
+            <span>Quy tắc: Hạn mượn <strong>7 ngày</strong> • Gia hạn tối đa <strong>1 lần (+7 ngày)</strong> khi còn hạn</span>
+          </div>
+        </div>
+
+        <!-- 4 Thẻ chỉ số chính -->
+        <div class="stats-grid">
+          <div class="stat-card stat-blue">
+            <div class="stat-icon">📚</div>
+            <div class="stat-data">
+              <span class="stat-number" id="stat-total-books">0</span>
+              <span class="stat-label">Tổng số đầu sách</span>
+            </div>
+          </div>
+          <div class="stat-card stat-green">
+            <div class="stat-icon">✅</div>
+            <div class="stat-data">
+              <span class="stat-number" id="stat-available-copies">0</span>
+              <span class="stat-label">Bản sao có sẵn</span>
+            </div>
+          </div>
+          <div class="stat-card stat-amber">
+            <div class="stat-icon">📖</div>
+            <div class="stat-data">
+              <span class="stat-number" id="stat-active-borrows">0</span>
+              <span class="stat-label">Phiếu đang mở</span>
+            </div>
+          </div>
+          <div class="stat-card stat-red">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-data">
+              <span class="stat-number" id="stat-overdue-borrows">0</span>
+              <span class="stat-label">Phiếu quá hạn</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bảng Cảnh báo phiếu quá hạn -->
+        <div class="card card-alert-overdue mt-4">
+          <div class="card-header bg-danger-light">
+            <h3 class="card-title text-danger">⚠️ Danh sách phiếu mượn quá hạn cần xử lý thu hồi</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-overdue-list">
+                <thead>
+                  <tr>
+                    <th>Mã phiếu</th>
+                    <th>Độc giả</th>
+                    <th>Liên hệ</th>
+                    <th>Sách & Bản sao</th>
+                    <th>Ngày mượn</th>
+                    <th>Hạn trả</th>
+                    <th>Quá hạn</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-overdue-borrows">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. TAB KHO SÁCH ================= -->
+      <section id="tab-books" class="tab-content">
+        <div class="section-header">
+          <div>
+            <h2>Quản lý Kho sách & Bản sao</h2>
+            <p class="section-desc">Theo dõi đầu sách, quản lý số lượng bản sao và tình trạng sẵn sàng của từng bản sách</p>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" id="btn-open-add-book">
+              ➕ Thêm đầu sách mới
+            </button>
+          </div>
+        </div>
+
+        <!-- Bộ lọc tìm kiếm sách -->
+        <div class="filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="book-search-input" class="form-control" placeholder="Tra cứu sách theo tên, tác giả, thể loại, ISBN...">
+          </div>
+          <button class="btn btn-secondary" id="btn-clear-book-search">Xóa bộ lọc</button>
+        </div>
+
+        <!-- Bảng danh sách đầu sách -->
+        <div class="card mt-3">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-books">
+                <thead>
+                  <tr>
+                    <th>Mã ISBN</th>
+                    <th>Tên đầu sách</th>
+                    <th>Tác giả</th>
+                    <th>Thể loại</th>
+                    <th>Năm XB</th>
+                    <th>Bản sao (Có sẵn / Tổng)</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-books">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Khu vực hiển thị chi tiết bản sao của sách được chọn -->
+        <div class="card mt-4" id="copies-detail-panel" style="display: none;">
+          <div class="card-header bg-slate d-flex justify-between align-center">
+            <h3 class="card-title" id="selected-book-title">Bản sao của sách</h3>
+            <button class="btn btn-success btn-sm" id="btn-open-add-copy">
+              ➕ Thêm bản sao cho đầu sách này
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-book-copies">
+                <thead>
+                  <tr>
+                    <th>Mã bản sao</th>
+                    <th>Vị trí lưu trữ</th>
+                    <th>Tình trạng</th>
+                    <th>Ghi chú</th>
+                    <th>Cập nhật tình trạng</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-book-copies">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. TAB ĐỘC GIẢ ================= -->
+      <section id="tab-readers" class="tab-content">
+        <div class="section-header">
+          <div>
+            <h2>Quản lý Hồ sơ Độc giả</h2>
+            <p class="section-desc">Quản lý thẻ bạn đọc, thông tin liên lạc và tra cứu lịch sử mượn trả</p>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" id="btn-open-add-reader">
+              ➕ Thêm độc giả mới
+            </button>
+          </div>
+        </div>
+
+        <!-- Bộ lọc độc giả -->
+        <div class="filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="reader-search-input" class="form-control" placeholder="Tra cứu theo mã thẻ, họ tên, số điện thoại, email...">
+          </div>
+          <button class="btn btn-secondary" id="btn-clear-reader-search">Xóa bộ lọc</button>
+        </div>
+
+        <!-- Bảng danh sách độc giả -->
+        <div class="card mt-3">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-readers">
+                <thead>
+                  <tr>
+                    <th>Mã thẻ</th>
+                    <th>Họ và tên</th>
+                    <th>Số điện thoại</th>
+                    <th>Email</th>
+                    <th>Địa chỉ</th>
+                    <th>Ngày đăng ký</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-readers">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. TAB MƯỢN & TRẢ SÁCH ================= -->
+      <section id="tab-borrows" class="tab-content">
+        <div class="section-header">
+          <div>
+            <h2>Quản lý Mượn & Trả sách</h2>
+            <p class="section-desc">Tạo phiếu mượn mới (thời hạn 7 ngày), gia hạn tối đa 1 lần và ghi nhận thu hồi sách</p>
+          </div>
+        </div>
+
+        <!-- Grid 2 cột: Tạo phiếu mượn & Hướng dẫn nghiệp vụ -->
+        <div class="borrow-create-grid">
+          <!-- Form tạo phiếu mượn -->
+          <div class="card">
+            <div class="card-header bg-primary-light">
+              <h3 class="card-title text-primary">📝 Tạo phiếu mượn sách mới</h3>
+            </div>
+            <div class="card-body">
+              <form id="form-create-borrow">
+                <div class="form-group">
+                  <label for="borrow-reader-select" class="form-label">Chọn Độc giả: <span class="text-danger">*</span></label>
+                  <select id="borrow-reader-select" class="form-control" required>
+                    <option value="">-- Chọn độc giả mượn sách --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="borrow-copy-select" class="form-label">Chọn Bản sao có sẵn: <span class="text-danger">*</span></label>
+                  <select id="borrow-copy-select" class="form-control" required>
+                    <option value="">-- Chọn bản sao trong kho --</option>
+                  </select>
+                  <small class="form-text text-muted" id="copy-status-hint">Chỉ các bản sao ở trạng thái "Có sẵn" mới được phép cho mượn.</small>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label for="borrow-date-input" class="form-label">Ngày mượn: <span class="text-danger">*</span></label>
+                    <input type="date" id="borrow-date-input" class="form-control" required>
+                  </div>
+                  <div class="form-group col-md-6">
+                    <label class="form-label">Hạn trả dự kiến (+7 ngày):</label>
+                    <div id="preview-due-date" class="form-preview-val">---</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="borrow-notes-input" class="form-label">Ghi chú mượn:</label>
+                  <input type="text" id="borrow-notes-input" class="form-control" placeholder="Mục đích mượn, tình trạng bìa, mã lớp...">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mt-2" id="btn-submit-borrow">
+                  ✅ Xác nhận lập phiếu mượn
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Bảng giải thích quy tắc nghiệp vụ rõ ràng -->
+          <div class="card card-rules-box">
+            <div class="card-header bg-slate-light">
+              <h3 class="card-title">📋 Quy tắc nghiệp vụ bắt buộc</h3>
+            </div>
+            <div class="card-body rules-list">
+              <div class="rule-item">
+                <span class="rule-icon">🕒</span>
+                <div>
+                  <strong>Thời hạn mượn mặc định:</strong>
+                  <p>Mỗi phiếu mượn có hạn <strong>07 ngày</strong> kể từ ngày mượn.</p>
+                </div>
+              </div>
+              <div class="rule-item">
+                <span class="rule-icon">🔄</span>
+                <div>
+                  <strong>Quy định gia hạn:</strong>
+                  <p>Chỉ được gia hạn <strong>tối đa 1 lần thêm 07 ngày</strong>, và chỉ áp dụng khi phiếu <strong>còn hạn</strong>.</p>
+                </div>
+              </div>
+              <div class="rule-item">
+                <span class="rule-icon">🚫</span>
+                <div>
+                  <strong>Chặn vi phạm:</strong>
+                  <p>Không cho mượn bản sao đang mượn, hư hỏng hoặc thất lạc. Chặn gia hạn phiếu đã quá hạn.</p>
+                </div>
+              </div>
+              <div class="rule-item">
+                <span class="rule-icon">📦</span>
+                <div>
+                  <strong>Thu hồi & cập nhật kho:</strong>
+                  <p>Khi trả sách, tình trạng bản sao được kiểm tra và cập nhật về: <em>Có sẵn</em>, <em>Hư hỏng</em> hoặc <em>Thất lạc</em>.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danh sách phiếu mượn đang mở -->
+        <div class="card mt-4">
+          <div class="card-header bg-amber-light d-flex justify-between align-center">
+            <h3 class="card-title text-amber-dark">⏳ Danh sách phiếu mượn đang mở (Chưa trả)</h3>
+            <span class="badge badge-info" id="badge-active-count">0 phiếu</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-active-borrows">
+                <thead>
+                  <tr>
+                    <th>Mã phiếu</th>
+                    <th>Độc giả</th>
+                    <th>Sách & Bản sao</th>
+                    <th>Ngày mượn</th>
+                    <th>Hạn trả</th>
+                    <th>Trạng thái hạn</th>
+                    <th>Gia hạn</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-active-borrows">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lịch sử phiếu đã đóng (Đã trả) -->
+        <div class="card mt-4">
+          <div class="card-header bg-slate-light">
+            <h3 class="card-title">📁 Lịch sử phiếu mượn đã đóng (Đã hoàn tất)</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="table-closed-borrows">
+                <thead>
+                  <tr>
+                    <th>Mã phiếu</th>
+                    <th>Độc giả</th>
+                    <th>Sách & Bản sao</th>
+                    <th>Ngày mượn</th>
+                    <th>Hạn trả</th>
+                    <th>Ngày trả</th>
+                    <th>Tình trạng khi trả</th>
+                    <th>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-closed-borrows">
+                  <!-- Render động -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Lab Quản lý Thư viện • Sinh viên thực hiện: <strong>Trần Văn Tuấn</strong> (MSSV: <strong>29211145634</strong>)</p>
+      <p class="footer-sub">Dữ liệu lưu trữ LocalStorage cục bộ trên trình duyệt • Kiến trúc Pure Vanilla HTML5/CSS3/ES6</p>
+    </footer>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal 1: Thêm đầu sách mới -->
+  <div class="modal" id="modal-add-book">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">➕ Thêm đầu sách mới vào kho</h3>
+          <button class="modal-close" data-close="modal-add-book">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-add-book">
+            <div class="form-group">
+              <label for="book-title" class="form-label">Tên đầu sách: <span class="text-danger">*</span></label>
+              <input type="text" id="book-title" class="form-control" required placeholder="Ví dụ: Thiết kế hệ thống thông tin">
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="book-author" class="form-label">Tác giả: <span class="text-danger">*</span></label>
+                <input type="text" id="book-author" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
+              </div>
+              <div class="form-group col-md-6">
+                <label for="book-category" class="form-label">Thể loại: <span class="text-danger">*</span></label>
+                <input type="text" id="book-category" class="form-control" required placeholder="Ví dụ: Công nghệ thông tin">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="book-isbn" class="form-label">Mã ISBN:</label>
+                <input type="text" id="book-isbn" class="form-control" placeholder="978-604-...">
+              </div>
+              <div class="form-group col-md-6">
+                <label for="book-year" class="form-label">Năm xuất bản:</label>
+                <input type="number" id="book-year" class="form-control" min="1900" max="2099" value="2024">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="book-publisher" class="form-label">Nhà xuất bản:</label>
+              <input type="text" id="book-publisher" class="form-control" placeholder="Ví dụ: NXB Khoa học Kỹ thuật">
+            </div>
+            <div class="form-group">
+              <label for="book-initial-copies" class="form-label">Số lượng bản sao khởi tạo ban đầu:</label>
+              <input type="number" id="book-initial-copies" class="form-control" min="1" max="20" value="1">
+              <small class="form-text text-muted">Hệ thống sẽ tự sinh mã bản sao tương ứng ở trạng thái "Có sẵn".</small>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modal-add-book">Hủy</button>
+              <button type="submit" class="btn btn-primary">Lưu đầu sách</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Thêm bản sao cho đầu sách có sẵn -->
+  <div class="modal" id="modal-add-copy">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">➕ Thêm bản sao cho đầu sách</h3>
+          <button class="modal-close" data-close="modal-add-copy">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-add-copy">
+            <input type="hidden" id="copy-target-book-id">
+            <div class="form-group">
+              <label class="form-label">Đầu sách tiếp nhận:</label>
+              <div id="copy-target-book-name" class="font-bold text-primary">---</div>
+            </div>
+            <div class="form-group">
+              <label for="copy-code-input" class="form-label">Mã bản sao (Barcode/ID): <span class="text-danger">*</span></label>
+              <input type="text" id="copy-code-input" class="form-control" required placeholder="Ví dụ: BS-001-04">
+            </div>
+            <div class="form-group">
+              <label for="copy-location-input" class="form-label">Vị trí kệ sách:</label>
+              <input type="text" id="copy-location-input" class="form-control" placeholder="Ví dụ: Kệ A1 - Tầng 2">
+            </div>
+            <div class="form-group">
+              <label for="copy-status-select" class="form-label">Tình trạng ban đầu:</label>
+              <select id="copy-status-select" class="form-control">
+                <option value="available">Có sẵn (Sẵn sàng cho mượn)</option>
+                <option value="damaged">Hư hỏng (Đang bảo trì/Sửa chữa)</option>
+                <option value="lost">Thất lạc</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="copy-note-input" class="form-label">Ghi chú bản sao:</label>
+              <input type="text" id="copy-note-input" class="form-control" placeholder="Tình trạng giấy, nguồn nhập...">
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modal-add-copy">Hủy</button>
+              <button type="submit" class="btn btn-success">Lưu bản sao</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Thêm độc giả mới -->
+  <div class="modal" id="modal-add-reader">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">➕ Tạo hồ sơ độc giả mới</h3>
+          <button class="modal-close" data-close="modal-add-reader">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-add-reader">
+            <div class="form-group">
+              <label for="reader-name" class="form-label">Họ và tên độc giả: <span class="text-danger">*</span></label>
+              <input type="text" id="reader-name" class="form-control" required placeholder="Ví dụ: Trần Văn Tuấn">
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="reader-phone" class="form-label">Số điện thoại liên hệ: <span class="text-danger">*</span></label>
+                <input type="tel" id="reader-phone" class="form-control" required placeholder="0901234567">
+              </div>
+              <div class="form-group col-md-6">
+                <label for="reader-email" class="form-label">Email: <span class="text-danger">*</span></label>
+                <input type="email" id="reader-email" class="form-control" required placeholder="tuan.tran@example.com">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="reader-address" class="form-label">Địa chỉ / Lớp học:</label>
+              <input type="text" id="reader-address" class="form-control" placeholder="Quận 1, TP. HCM hoặc Lớp K29-CNTT">
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modal-add-reader">Hủy</button>
+              <button type="submit" class="btn btn-primary">Lưu hồ sơ độc giả</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Lịch sử mượn trả của độc giả -->
+  <div class="modal modal-lg" id="modal-reader-history">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">📜 Lịch sử mượn trả độc giả: <span id="history-reader-name" class="text-primary">---</span></h3>
+          <button class="modal-close" data-close="modal-reader-history">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã phiếu</th>
+                  <th>Tên đầu sách</th>
+                  <th>Mã bản sao</th>
+                  <th>Ngày mượn</th>
+                  <th>Hạn trả</th>
+                  <th>Ngày trả</th>
+                  <th>Trạng thái</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-reader-history">
+                <!-- Render động -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close="modal-reader-history">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Xử lý trả sách và đóng phiếu -->
+  <div class="modal" id="modal-return-book">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success-light">
+          <h3 class="modal-title text-success">📦 Tiếp nhận trả sách & Đóng phiếu</h3>
+          <button class="modal-close" data-close="modal-return-book">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-return-book">
+            <input type="hidden" id="return-borrow-id">
+            <div class="return-summary-box mb-3">
+              <p><strong>Mã phiếu:</strong> <span id="return-info-code" class="text-primary">---</span></p>
+              <p><strong>Độc giả:</strong> <span id="return-info-reader">---</span></p>
+              <p><strong>Sách thu hồi:</strong> <span id="return-info-book">---</span></p>
+              <p><strong>Bản sao:</strong> <span id="return-info-copy" class="badge badge-info">---</span></p>
+              <p><strong>Hạn trả quy định:</strong> <span id="return-info-due">---</span></p>
+              <p id="return-overdue-alert" class="text-danger font-bold mt-1" style="display: none;"></p>
+            </div>
+
+            <div class="form-group">
+              <label for="return-date-input" class="form-label">Ngày xử lý trả: <span class="text-danger">*</span></label>
+              <input type="date" id="return-date-input" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="return-condition-select" class="form-label">Tình trạng bản sao khi nhận lại: <span class="text-danger">*</span></label>
+              <select id="return-condition-select" class="form-control" required>
+                <option value="available">✅ Có sẵn (Bản sao nguyên vẹn, tốt)</option>
+                <option value="damaged">⚠️ Hư hỏng (Rách trang, hư bìa, cần bảo trì)</option>
+                <option value="lost">❌ Thất lạc (Độc giả báo làm mất sách)</option>
+              </select>
+              <small class="form-text text-muted">Hệ thống sẽ tự động cập nhật tình trạng bản sao trong kho tương ứng với lựa chọn này.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="return-notes-input" class="form-label">Ghi chú thu hồi:</label>
+              <input type="text" id="return-notes-input" class="form-control" placeholder="Ghi nhận tiền phạt trễ, mức độ hư hại...">
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-close="modal-return-book">Hủy</button>
+              <button type="submit" class="btn btn-success">✅ Xác nhận hoàn tất trả sách</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/seed.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/library.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
